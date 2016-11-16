@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <meta charset="utf-8"/>
+
+    <title>HYCloud WebSocket Client</title>
+
+    <link href="bootstrap.css" rel="stylesheet">
+
+    <style>
+        body {
+            padding: 20px;
+        }
+
+        #console {
+            height: 400px;
+            overflow: auto;
+        }
+
+        .request-msg {
+            color: orange;
+        }
+
+        .connect-msg {
+            color: green;
+        }
+
+        .disconnect-msg {
+            color: red;
+        }
+
+        .response-msg {
+            color: #888
+        }
+    </style>
+
+
+    <script src="js/socket.io/socket.io.js"></script>
+    <script src="js/moment.min.js"></script>
+    <script src="js/jquery-1.7.2.min.js"></script>
+
+    <script>
+
+        var clientSocket = null;
+
+        function createConnection() {
+            if(clientSocket!==null) {
+                clientSocket.close();
+            }
+            //var socket = io.connect('http://test.cloud.rbcloudtech.com:39090');//公司服务器
+            var socket = io.connect('http://www.baidu.com');
+
+            clientSocket = socket;
+            var userName = $('#userName').val();
+            var password = $('#password').val();
+
+            if(userName==null||userName==undefined|| userName=="") {
+                alert("user name format error");
+                return;
+            }
+
+            if(password==null||password==undefined|| password=="") {
+                alert("password format error");
+                return;
+            }
+
+            socket.on('connect', function () {
+                output('<span class="connect-msg">You has connected to the HYCloud server!</span>');
+                var loginJson = {"zl_cloud":"1.0","id":1,"method":"LOGIN","params":{"login_id":"userID_1a","hashed_pwd":"1"}};
+                loginJson.params.login_id = userName;
+                loginJson.params.hashed_pwd = password;
+
+                var loginString = JSON.stringify(loginJson)+"\r\n";
+                sendRequest(loginString);
+                output('<span class="request-msg">'+'I: '+loginString+'</span>');
+            });
+
+            socket.on('response', function (data) {
+                var dataString = String.fromCharCode.apply(null, new Uint8Array(data));
+                output('<span class="response-msg">' + 'HYCloud: '+ dataString + ':</span> ');
+            });
+
+            socket.on('disconnect', function () {
+                output('<span class="disconnect-msg">You has disconnected from HYCloud!</span>');
+                clientSocket = null;
+            });
+
+            socket.on('error', function () {
+                output('<span class="disconnect-msg">socketio raise an error</span>');
+                clientSocket = null;
+            });
+            return socket;
+        }
+
+        function sendDisconnect() {
+            clientSocket.disconnect();
+        }
+
+        function sendConnect() {
+            $('#console').empty();
+            clientSocket = createConnection();
+        }
+
+        function sendMessage() {
+            if(clientSocket==null) {
+                alert("please connect to HYCloud Server first!");
+                return;
+            }
+
+            var message = $('#msg').val();
+
+            if(message==null||message=="") {
+                alert("json request format error");
+                return;
+            }
+            $('#msg').val('');
+
+            clientSocket.emit('request', message);
+            output('<span class="request-msg">'+message+'</span>');
+        }
+
+        function sendRequest(message) {
+            clientSocket.emit('request', message);
+        }
+
+        function output(message) {
+            var currentTime = "<span class='time'>" + moment().format('HH:mm:ss.SSS') + "</span>";
+            var element = $("<div>" + currentTime + " " + message + "</div>");
+            $('#console').append(element);
+        }
+
+        $(document).keydown(function (e) {
+            if (e.keyCode == 13) {
+                $('#send').click();
+            }
+        });
+    </script>
+</head>
+
+<body>
+
+<h1>HYCloud SocketIO Session</h1>
+
+<br/>
+
+<form class="well form-inline" onsubmit="return false;">
+    userName:
+    <input id="userName" class="input-xlarge" type="text" placeholder="user name"/>
+    password:
+    <input id="password" class="input-xlarge" type="text" placeholder="password"/>
+    <button type="button" onClick="sendConnect()" class="btn" id="send">Connect</button>
+    <button type="button" onClick="sendDisconnect()" class="btn">Disconnect</button>
+</form>
+
+
+<div id="console" class="well">
+</div>
+
+<form class="well form-inline" onsubmit="return false;">
+    <input id="msg" class="input-xlarge" style="width: 500px;" type="text" placeholder="json request"/>
+    <button type="button" onClick="sendMessage()" class="btn" id="send">Send</button>
+</form>
+
+
+</body>
+
+</html>
